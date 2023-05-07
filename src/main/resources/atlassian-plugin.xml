@@ -1,0 +1,84 @@
+<atlassian-plugin key="${project.groupId}.${project.artifactId}" name="${project.name}" plugins-version="2">
+    <plugin-info>
+        <description>${project.description}</description>
+        <version>${project.version}</version>
+        <vendor name="${project.organization.name}" url="${project.organization.url}" />
+        <param name="plugin-icon">images/pluginIcon.png</param>
+        <param name="plugin-logo">images/pluginLogo.png</param>
+    </plugin-info>
+
+    <!-- Merge Check Resources -->
+    <repository-merge-check key="has-secret-pr-merge-check" name="BitbucketPlugin: Prevent Merging Secrets" class="bean:HasSecretMergeCheck" configurable="true">
+        <icon>images/bitbucketplugin_hook_icon.png</icon>
+        <description>Require a repository administrator to merge pull-request if the pull request contains secrets</description>
+        <scopes>
+            <scope>project</scope>
+            <scope>repository</scope>
+        </scopes>
+    </repository-merge-check>
+
+    <!-- Pull-request user interface for BitbucketPlugin Overview Resources -->
+    <client-resource key="bitbucketplugin-pullrequest-ui-res" name="Resources: Pull Request Overview Panel Dependencies">
+        <description>Dependencies for the UI panel in the pull request which displays found secrets</description>
+        <resource type="download" name="bitbucketplugin-pr-overview.soy.js" location="/soy/bitbucketplugin-pr-overview.soy"/>
+        <resource type="download" name="bitbucketplugin-pr-overview.js" location="/js/bitbucketplugin-pr-overview.js"/>
+        <resource type="download" name="bitbucketplugin-pr-overview.css" location="/css/bitbucketplugin-pr-overview.css"/>
+        <dependency>com.atlassian.auiplugin:ajs</dependency>
+        <dependency>com.atlassian.bitbucket.server.bitbucket-web:global</dependency>
+        <dependency>com.atlassian.bitbucket.server.bitbucket-web-api:pull-request-web-panels</dependency>
+        <dependency>com.atlassian.bitbucket.server.bitbucket-web-api:aui</dependency>
+        <dependency>com.atlassian.bitbucket.server.bitbucket-web-api:state</dependency>
+        <dependency>com.atlassian.bitbucket.server.bitbucket-web-api:jquery</dependency>
+        <dependency>com.atlassian.bitbucket.server.bitbucket-web-api:navbuilder</dependency>
+    </client-resource>
+
+    <!-- Pull-request user interface panel configuration -->
+    <client-web-panel name="Interface: Pull Request Overview Panel" key="bitbucketplugin-pullrequest-ui" location="bitbucket.pull-request.related-entities" weight="2050">
+        <description>Summary of the found secret scan results on the overview page of a pull request.</description>
+
+        <resource name="view" type="soy" location="com.cyanoth.bitbucketplugin:bitbucketplugin-pullrequest-ui-res/com.cyanoth.bitbucketplugin.panel" />
+        <client-context-provider>require('BitbucketPlugin/PullRequestUIOverview').showSecretScanPROverview</client-context-provider>
+
+        <!-- Only display the statistics panel on OPEN pull requests (pre-merge) -->
+        <client-condition>function(context) { return context['pullRequest'].state === 'OPEN' }</client-condition>
+
+        <!-- Check whether the Merge Check is enabled or not -->
+        <condition class="com.cyanoth.bitbucketplugin.conditions.PullRequestMergeCheckEnabled" />
+
+        <dependency>com.cyanoth.bitbucketplugin:bitbucketplugin-pullrequest-ui-res</dependency>
+    </client-web-panel>
+
+    <!-- Resources for the global configuration ui page -->
+    <client-resource key="bitbucketplugin-globalconfig-ui-res" name="bitbucketplugin-globalconfig-ui-res">
+        <resource type="download" name="bitbucketplugin-global-config.js" location="/js/bitbucketplugin-global-config.js"/>
+        <resource type="download" name="bitbucketplugin-global-config.soy.js" location="/soy/bitbucketplugin-global-config.soy"/>
+        <context>com.cyanoth.bitbucketplugin.globaladmin</context>
+
+        <dependency>com.atlassian.auiplugin:ajs</dependency>
+        <dependency>com.atlassian.bitbucket.server.bitbucket-web:global</dependency>
+        <dependency>com.atlassian.bitbucket.server.bitbucket-web-api:aui</dependency>
+        <dependency>com.atlassian.bitbucket.server.bitbucket-web-api:jquery</dependency>
+        <dependency>com.atlassian.bitbucket.server.bitbucket-web-api:navbuilder</dependency>
+        <dependency>com.atlassian.auiplugin:aui-experimental-restfultable</dependency>
+    </client-resource>
+
+    <!-- Servlet for the global configuration page -->
+    <servlet key="bitbucketplugin-globalconfig-servlet" class="com.cyanoth.bitbucketplugin.config.UI.GlobalConfigServlet">
+        <url-pattern>/bitbucketplugin/globalconfig</url-pattern>
+        <dependency>com.cyanoth.bitbucketplugin:bitbucketplugin-globalconfig-ui-res-</dependency>
+    </servlet>
+
+    <web-item key="bitbucketplugin-admin-configuration-panel" name="Secret Warden Administration Link" weight="20" section="atl.admin/admin-plugins-section" application="bitbucket">
+        <condition class="com.atlassian.bitbucket.web.conditions.HasGlobalPermissionCondition">
+            <param name="permission">ADMIN</param>
+        </condition>
+        <label key="plugin.page.repo.ci.info.tab.label">Secret Warden</label>
+        <tooltip key="plugin.page.repo.ci.sys.info.tab.tooltip">Configure BitbucketPlugin settings.</tooltip>
+        <link>/plugins/servlet/bitbucketplugin/globalconfig</link>
+    </web-item>
+
+    <rest name="BitbucketPlugin REST API" key="bitbucketplugin-rest-resources" path="/bitbucketplugin" version="1.0">
+        <description>Secret Warden REST Resources</description>
+    </rest>
+
+</atlassian-plugin>
